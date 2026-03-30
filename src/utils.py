@@ -1,9 +1,20 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import time
+from matplotlib.ticker import FuncFormatter
 
-def plot_execution_times(results_dict, sizes, datasets, algo_name="Thuật toán"):
+
+def plot_execution_times(
+    results_dict,
+    sizes,
+    datasets,
+    algo_name="Thuật toán",
+    use_log_y=False,
+    annotate_last_point=True,
+):
     """
     Hàm vẽ đồ thị trực quan hóa thời gian thực thi của thuật toán.
+    Phiên bản nâng cao với phong cách hiện đại, dễ đọc và dễ so sánh.
     
     Tham số (Inputs):
     -----------------
@@ -17,43 +28,126 @@ def plot_execution_times(results_dict, sizes, datasets, algo_name="Thuật toán
     algo_name : str, optional
         Tên thuật toán và độ phức tạp để hiển thị trên tiêu đề đồ thị.
         (Mặc định là "Thuật toán").
+    use_log_y : bool, optional
+        Nếu True, dùng trục y log để so sánh khi thời gian chênh lệch lớn.
+    annotate_last_point : bool, optional
+        Nếu True, ghi nhãn trực tiếp tại điểm cuối mỗi đường.
     """
-    
-    # Thiết lập kích thước đồ thị
-    plt.figure(figsize=(10, 6))
 
-    # Định nghĩa màu cho từng loại dữ liệu
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
+    # Style hiện đại, nền sáng giúp bản PDF nhìn rõ hơn.
+    plt.style.use("seaborn-v0_8-whitegrid")
+    fig, ax = plt.subplots(figsize=(12, 7), dpi=140)
+    fig.patch.set_facecolor("#F7F8FB")
+    ax.set_facecolor("#F7F8FB")
+
+    # Bảng màu thân thiện với người mù màu (Okabe-Ito inspired).
+    colors = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9"]
+    markers = ["o", "s", "D", "^", "P", "X"]
     labels = {
-        'random': 'Ngẫu nhiên',
-        'nearly_sorted': 'Gần như đã sắp',
-        'many_duplicates': 'Nhiều khóa trùng',
-        'reverse_sorted': 'Sắp ngược'
+        "random": "Ngẫu nhiên",
+        "nearly_sorted": "Gần như đã sắp",
+        "many_duplicates": "Nhiều khóa trùng",
+        "reverse_sorted": "Sắp ngược",
     }
+
+    plotted_series = []
 
     # Vẽ đường cho từng loại tập dữ liệu
     for idx, data_type in enumerate(datasets):
         times = results_dict[data_type]
-        
+
         # Lọc các giá trị None (nếu có lỗi khi đọc file)
         valid_sizes = [sizes[i] for i in range(len(sizes)) if times[i] is not None]
         valid_times = [times[i] for i in range(len(times)) if times[i] is not None]
-        
-        if valid_sizes: # Chỉ vẽ nếu có dữ liệu
-            plt.plot(valid_sizes, valid_times, color=colors[idx % len(colors)], 
-                     linewidth=2, markersize=8, label=labels.get(data_type, data_type))
+
+        if valid_sizes:  # Chỉ vẽ nếu có dữ liệu
+            x_vals = np.array(valid_sizes, dtype=float)
+            y_vals = np.array(valid_times, dtype=float)
+            display_label = labels.get(data_type, data_type)
+
+            ax.plot(
+                x_vals,
+                y_vals,
+                color=colors[idx % len(colors)],
+                marker=markers[idx % len(markers)],
+                linewidth=2.8,
+                markersize=7,
+                markerfacecolor="white",
+                markeredgewidth=1.8,
+                label=display_label,
+                zorder=3,
+            )
+
+            # Làm nổi bật điểm cuối để đọc nhanh performance tại n lớn nhất.
+            ax.scatter(
+                [x_vals[-1]],
+                [y_vals[-1]],
+                color=colors[idx % len(colors)],
+                s=70,
+                zorder=4,
+            )
+
+            plotted_series.append((display_label, x_vals, y_vals, colors[idx % len(colors)]))
+
+    # Dùng trục x log giúp các mốc n=10^2...10^5 tách đều và dễ so sánh.
+    ax.set_xscale("log", base=10)
+    ax.set_xticks(sizes)
+    ax.set_xticklabels([f"{int(s):,}".replace(",", ".") for s in sizes])
+
+    if use_log_y:
+        positive_values = [
+            y for _, _, y_vals, _ in plotted_series for y in y_vals.tolist() if y > 0
+        ]
+        if positive_values:
+            ax.set_yscale("log")
 
     # Trang trí chi tiết cho đồ thị
-    plt.title(f'Thời gian thực thi của thuật toán {algo_name}', fontsize=15, fontweight='bold')
-    plt.xlabel('Kích thước tập dữ liệu n', fontsize=12)
-    plt.ylabel('Thời gian thực thi tính bằng giây', fontsize=12)
+    ax.set_title(
+        f"Thời gian thực thi của thuật toán {algo_name}",
+        fontsize=18,
+        fontweight="bold",
+        pad=14,
+    )
+    ax.set_xlabel("Kích thước tập dữ liệu n", fontsize=13, labelpad=10)
+    ax.set_ylabel("Thời gian thực thi (giây)", fontsize=13, labelpad=10)
+
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.3f}"))
 
     # Thêm lưới để dễ dóng các giá trị
-    plt.grid(True, which="both", ls="--", alpha=0.5)
-    plt.legend(fontsize=11)
+    ax.grid(True, which="major", linestyle="--", linewidth=0.8, alpha=0.45)
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.6, alpha=0.25)
+
+    # Bỏ viền thừa để biểu đồ sạch hơn.
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    # Ghi nhãn trực tiếp tại điểm cuối để giảm phụ thuộc vào legend.
+    if annotate_last_point:
+        x_min, x_max = min(sizes), max(sizes)
+        x_text = x_max * 1.05
+        for _, x_vals, y_vals, color in plotted_series:
+            ax.text(
+                x_text,
+                y_vals[-1],
+                f"{y_vals[-1]:.4f}s",
+                color=color,
+                fontsize=10.5,
+                va="center",
+                fontweight="semibold",
+            )
+        ax.set_xlim(left=x_min * 0.95, right=x_max * 1.35)
+
+    ax.legend(
+        loc="upper left",
+        fontsize=11,
+        frameon=True,
+        facecolor="white",
+        edgecolor="#D9DDE5",
+        framealpha=0.95,
+    )
 
     # Hiển thị đồ thị
-    plt.tight_layout()
+    plt.tight_layout(pad=2.0)
     plt.show()
 
 def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes):

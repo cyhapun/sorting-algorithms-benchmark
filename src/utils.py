@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import time
-from matplotlib.ticker import FuncFormatter, LogFormatterMathtext
+from matplotlib.ticker import FuncFormatter, LogFormatterMathtext, NullFormatter
 from matplotlib.colors import LogNorm
 
 
@@ -262,7 +262,7 @@ def plot_comprehensive_barchart_grid(
                         bar.get_x() + bar.get_width()/2,
                         yval * 1.15,
                         f"{yval:.3f}", # Rút gọn bớt số thập phân để đỡ rối
-                        ha='center', va='bottom', fontsize=8, rotation=90, color="#333333"
+                        ha='center', va='bottom', fontsize=8, rotation=90, color="#333333", fontweight="bold"
                     )
 
         # Cấu hình cho từng Subplot
@@ -334,4 +334,97 @@ def plot_danger_zone_heatmap(all_results, target_size_idx, sizes, datasets, titl
     plt.xticks(rotation=15, ha="right", fontsize=10, fontweight="bold")
     plt.yticks(rotation=0, fontsize=10, fontweight="bold")
     plt.tight_layout()
+    plt.show()
+
+
+def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name, title="Bảng Tỷ lệ Tăng tốc so với Selection Sort"):
+    """
+    Vẽ lưới 2x2 Subplots so sánh Speedup Factor so với Baseline tồi nhất (ví dụ Selection Sort).
+    """
+    plt.style.use("seaborn-v0_8-whitegrid")
+    
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(16, 12), dpi=140)
+    fig.patch.set_facecolor("#FFFFFF")
+    axes = axes.flatten()
+    
+    algorithms = list(all_results.keys())
+    # Loại bỏ baseline ra khỏi danh sách so sánh (vì cột của nó luôn = 1)
+    algos_to_compare = [a for a in algorithms if a != baseline_algo_name]
+    
+    num_compare = len(algos_to_compare)
+    x = np.arange(len(sizes))  
+    width = 0.8 / num_compare 
+    
+    # Màu sắc cố định cho các thuật toán (bảngOkabe-Ito, bỏ baseline)
+    algo_colors = ["#E69F00", "#009E73", "#0072B2", "#CC79A7"] 
+    labels_vn = {
+        "random": "Ngẫu nhiên",
+        "nearly_sorted": "Gần như đã sắp",
+        "many_duplicates": "Nhiều khóa trùng",
+        "reverse_sorted": "Sắp ngược",
+    }
+
+    # Lặp qua từng loại dữ liệu
+    for ax_idx, target_dataset in enumerate(datasets):
+        ax = axes[ax_idx]
+        ax.set_facecolor("#FFFFFF")
+        dataset_name = labels_vn.get(target_dataset, target_dataset)
+
+        # Lấy mảng thời gian baseline để tính toán
+        baseline_times = all_results[baseline_algo_name][target_dataset]
+        baseline_times = [t if (t is not None and t > 0) else 1e-7 for t in baseline_times]
+
+        for i, algo_name in enumerate(algos_to_compare):
+            times = all_results[algo_name][target_dataset]
+            safe_times = [t if (t is not None and t > 0) else 1e-7 for t in times]
+            
+            # Tính toán Speedup: Baseline_Time / Algo_Time
+            speedup_factors = [baseline / algo for baseline, algo in zip(baseline_times, safe_times)]
+            
+            offset = (i - num_compare/2 + 0.5) * width
+            
+            bars = ax.bar(
+                x + offset, speedup_factors, width, 
+                label=algo_name if ax_idx == 0 else "", 
+                color=algo_colors[i % len(algo_colors)],
+                edgecolor="white", linewidth=1.2, zorder=3, alpha=0.9
+            )
+            
+            # Ghi nhãn Speedup Factor trên từng cột (dạng rút gọn 10^x hoặc số thực)
+            for bar in bars:
+                yval = bar.get_height()
+                if yval > 2: # Chỉ ghi số nếu nhanh hơn ít nhất 2 lần
+                    ax.text(
+                        bar.get_x() + bar.get_width()/2, yval * 1.15, 
+                        f"{yval:.1e}" if yval >= 1000 else f"{yval:.1f}x", 
+                        ha='center', va='bottom', fontsize=9, rotation=90, color="#2C3E50", fontweight="bold"
+                    )
+
+        # Trục Y Logarithmic Factor
+        ax.set_yscale("log")
+        ax.yaxis.set_major_formatter(LogFormatterMathtext())
+        
+        # Tiêu đề subplot
+        ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=15, fontweight="bold", pad=15)
+        ax.grid(True, which="major", axis="y", linestyle="-", linewidth=0.8, color="#EAEAEA")
+        
+        # Vẽ đường Baseline = 1
+        ax.axhline(1, color="#BDC3C7", linestyle="--", linewidth=1.5, zorder=2)
+        
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+        # Cấu hình Full trục X cho cả 4 biểu đồ
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"{s:,}".replace(",", ".") for s in sizes], fontsize=11, fontweight="bold")
+        ax.set_xlabel("Kích thước mảng (n)", fontsize=12)
+            
+        if ax_idx % 2 == 0:
+            ax.set_ylabel("Hệ số tăng tốc (Lần chạy) - Thang Log", fontsize=12)
+
+    fig.suptitle(f"{title} ({baseline_algo_name})", fontsize=22, fontweight="heavy", y=0.96, color="#1A252F")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_compare, fontsize=13, frameon=False)
+
+    plt.tight_layout(rect=[0, 0.08, 1, 0.93])
     plt.show()

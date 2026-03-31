@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 import time
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, LogFormatterMathtext
+from matplotlib.colors import LogNorm
 
 
 def plot_execution_times(
@@ -9,17 +11,17 @@ def plot_execution_times(
     sizes,
     datasets,
     algo_name="Thuật toán",
-    use_log_y=False,
+    use_log_y=True,
     annotate_last_point=True,
 ):
     """
     Hàm vẽ đồ thị trực quan hóa thời gian thực thi của thuật toán.
     Phiên bản nâng cao với phong cách hiện đại, dễ đọc và dễ so sánh.
-    
+   
     Tham số (Inputs):
     -----------------
     results_dict : dict
-        Từ điển chứa kết quả thời gian chạy. 
+        Từ điển chứa kết quả thời gian chạy.
         Cấu trúc: {'tên_dataset': [thời_gian_n1, thời_gian_n2, ...]}
     sizes : list
         Danh sách các kích thước mảng n (ví dụ: [100, 1000, 10000, 100000]).
@@ -150,37 +152,186 @@ def plot_execution_times(
     plt.tight_layout(pad=2.0)
     plt.show()
 
-def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes):
+def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes, num_runs=5):
     """
-    Hàm đo thời gian thực thi của một thuật toán sắp xếp.
+    Hàm đo thời gian thực thi trung bình của một thuật toán qua nhiều lần chạy.
     
     Inputs:
     - algorithm_func: Tên hàm của thuật toán (VD: merge_sort, insertion_sort)
-    - data_dict: Từ điển chứa dữ liệu mảng đã được nạp sẵn (loaded_data)
+    - data_dict: Từ điển chứa dữ liệu mảng đã được nạp sẵn
     - datasets: Danh sách các loại tập dữ liệu
     - sizes: Danh sách các kích thước n
+    - num_runs: Số lần chạy để lấy trung bình (mặc định = 5)
     
     Output:
-    - results: Từ điển chứa kết quả thời gian thực thi theo từng loại dataset.
+    - results: Từ điển chứa thời gian thực thi trung bình.
     """
     results = {data_type: [] for data_type in datasets}
     
     for data_type in datasets:
         for size in sizes:
-            # Lấy mảng dữ liệu tương ứng từ RAM
+            # Lấy mảng dữ liệu gốc từ RAM
             data = data_dict[data_type].get(size)
             
             if data is not None:
-                arr_to_sort = data.copy()
+                # Mảng lưu thời gian của các lần chạy cho size này
+                run_times = []
                 
-                # Bắt đầu đo
-                start_time = time.perf_counter()
-                algorithm_func(arr_to_sort)
-                end_time = time.perf_counter()
+                for _ in range(num_runs):
+                    # BẮT BUỘC: Phải copy lại mảng gốc cho mỗi lần chạy
+                    # Nếu không, từ lần chạy thứ 2 thuật toán sẽ sort trên mảng đã sort sẵn
+                    arr_to_sort = data.copy()
+                    
+                    # Bắt đầu đo
+                    start_time = time.perf_counter()
+                    algorithm_func(arr_to_sort)
+                    end_time = time.perf_counter()
+                    
+                    run_times.append(end_time - start_time)
                 
-                execution_time = end_time - start_time
-                results[data_type].append(execution_time)
+                # Tính trung bình cộng của num_runs lần chạy
+                average_time = sum(run_times) / num_runs
+                results[data_type].append(average_time)
             else:
                 results[data_type].append(None)
                 
     return results
+
+
+def plot_comprehensive_barchart_grid(
+    all_results,
+    sizes,
+    datasets,
+    title="Tổng quan Hiệu năng Thuật toán Lọc trên các Phân bố Dữ liệu"
+):
+    """
+    Vẽ lưới 2x2 Subplots (Small Multiples).
+    Mỗi subplot là một Bar Chart so sánh các thuật toán theo Size trên 1 loại dataset.
+    """
+    plt.style.use("seaborn-v0_8-whitegrid")
+   
+    # Tạo Figure lớn chứa 4 subplots (lưới 2x2)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(18, 12), dpi=140)
+    fig.patch.set_facecolor("#F7F8FB")
+   
+    # Làm phẳng mảng axes để dễ lặp qua (từ 2x2 thành mảng 1 chiều 4 phần tử)
+    axes = axes.flatten()
+   
+    algorithms = list(all_results.keys())
+    num_algos = len(algorithms)
+    num_sizes = len(sizes)
+   
+    x = np.arange(num_sizes)  
+    width = 0.8 / num_algos
+    colors = ["#D55E00", "#0072B2", "#009E73", "#E69F00"]
+   
+    labels_vn = {
+        "random": "Ngẫu nhiên",
+        "nearly_sorted": "Gần như đã sắp",
+        "many_duplicates": "Nhiều khóa trùng",
+        "reverse_sorted": "Sắp ngược",
+    }
+
+    # Lặp qua từng loại dữ liệu để vẽ vào từng subplot tương ứng
+    for ax_idx, target_dataset in enumerate(datasets):
+        ax = axes[ax_idx]
+        ax.set_facecolor("#F7F8FB")
+        dataset_name = labels_vn.get(target_dataset, target_dataset)
+
+        for i, algo_name in enumerate(algorithms):
+            times = all_results[algo_name][target_dataset]
+            safe_times = [t if (t is not None and t > 0) else 1e-6 for t in times]
+            offset = (i - num_algos/2 + 0.5) * width
+           
+            bars = ax.bar(
+                x + offset,
+                safe_times,
+                width,
+                label=algo_name if ax_idx == 0 else "", # Chỉ dán nhãn ở biểu đồ đầu tiên cho Legend
+                color=colors[i % len(colors)],
+                edgecolor="white",
+                linewidth=1.0,
+                zorder=3
+            )
+           
+            # Ghi nhãn thời gian trên từng cột nhỏ
+            for bar in bars:
+                yval = bar.get_height()
+                if yval > 1e-5:
+                    ax.text(
+                        bar.get_x() + bar.get_width()/2,
+                        yval * 1.15,
+                        f"{yval:.3f}", # Rút gọn bớt số thập phân để đỡ rối
+                        ha='center', va='bottom', fontsize=8, rotation=90, color="#333333"
+                    )
+
+        # Cấu hình cho từng Subplot
+        ax.set_yscale("log")
+        ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=15, fontweight="bold", color="#2C3E50")
+        
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"{s:,}".replace(",", ".") for s in sizes], fontsize=11, fontweight="bold")
+        ax.set_xlabel("Kích thước mảng (n)", fontsize=12)
+        if ax_idx % 2 == 0: # 2 biểu đồ cột trái
+            ax.set_ylabel("Thời gian (s) - Log Scale", fontsize=12)
+
+        # Lưới và viền cho từng subplot
+        ax.grid(True, which="major", axis="y", linestyle="--", linewidth=0.7, alpha=0.5)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    # Đặt tiêu đề chung cho cả bức ảnh (Figure)
+    fig.suptitle(title, fontsize=22, fontweight="bold", y=0.98, color="#1A252F")
+   
+    # Tạo MỘT Legend chung duy nhất đặt ở dưới cùng
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_algos, fontsize=13, frameon=False)
+
+    # Chỉnh khoảng cách giữa các subplots để không bị đè chữ
+    plt.tight_layout(rect=[0, 0.08, 1, 0.95])
+    plt.show()
+
+def plot_danger_zone_heatmap(all_results, target_size_idx, sizes, datasets, title="Bản đồ Nhiệt: Vùng Nguy Hiểm Tại n = "):
+    """
+    Vẽ Heatmap so sánh toàn bộ thuật toán trên mọi dataset ở một kích thước n cụ thể.
+    """
+    algorithms = list(all_results.keys())
+    target_n = sizes[target_size_idx]
+    
+    labels_vn = {
+        "random": "Ngẫu nhiên",
+        "nearly_sorted": "Gần sắp",
+        "many_duplicates": "Nhiều trùng",
+        "reverse_sorted": "Sắp ngược",
+    }
+    y_labels = [labels_vn.get(ds, ds) for ds in datasets]
+    
+    # Xây dựng ma trận dữ liệu (Rows: Datasets, Cols: Algorithms)
+    data_matrix = np.zeros((len(datasets), len(algorithms)))
+    
+    for i, ds in enumerate(datasets):
+        for j, algo in enumerate(algorithms):
+            val = all_results[algo][ds][target_size_idx]
+            data_matrix[i, j] = val if (val is not None and val > 0) else 1e-6
+
+    plt.figure(figsize=(10, 6), dpi=140)
+    
+    # Sử dụng LogNorm để thang màu không bị thuật toán O(n^2) nuốt chửng
+    sns.heatmap(
+        data_matrix, 
+        annot=True, 
+        fmt=".4f", 
+        cmap="YlOrRd", # Bảng màu Vàng -> Đỏ (Đỏ là nguy hiểm/chậm)
+        norm=LogNorm(vmin=data_matrix.min(), vmax=data_matrix.max()),
+        xticklabels=algorithms, 
+        yticklabels=y_labels,
+        linewidths=1.5,
+        linecolor='white',
+        cbar_kws={'label': 'Thời gian (giây) - Log Scale'}
+    )
+    
+    plt.title(f"{title} {target_n:,}".replace(",", "."), fontsize=16, fontweight="bold", pad=20)
+    plt.xticks(rotation=15, ha="right", fontsize=10, fontweight="bold")
+    plt.yticks(rotation=0, fontsize=10, fontweight="bold")
+    plt.tight_layout()
+    plt.show()

@@ -11,12 +11,13 @@ def plot_execution_times(
     sizes,
     datasets,
     algo_name="Thuật toán",
-    use_log_y=True,
+    use_log_y=False,
     annotate_last_point=True,
 ):
     """
     Hàm vẽ đồ thị trực quan hóa thời gian thực thi của thuật toán.
     Phiên bản nâng cao với phong cách hiện đại, dễ đọc và dễ so sánh.
+    Tích hợp thuật toán chống đè nhãn (Label Collision Avoidance) - Vẽ đường nối cho TẤT CẢ.
    
     Tham số (Inputs):
     -----------------
@@ -123,21 +124,52 @@ def plot_execution_times(
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    # Ghi nhãn trực tiếp tại điểm cuối để giảm phụ thuộc vào legend.
+    # ========================================================
+    # Ghi nhãn trực tiếp tại điểm cuối (Tích hợp chống đè nhãn)
+    # ========================================================
     if annotate_last_point:
         x_min, x_max = min(sizes), max(sizes)
-        x_text = x_max * 1.05
-        for _, x_vals, y_vals, color in plotted_series:
+        x_text = x_max * 1.35  # Đẩy text ra xa hơn một chút để có không gian vẽ đường nối
+
+        # 1. Sắp xếp các điểm cuối theo thứ tự thời gian tăng dần (từ dưới lên trên)
+        sorted_series = sorted(plotted_series, key=lambda s: s[2][-1])
+        
+        last_text_y = 1e-10 
+        
+        for display_label, x_vals, y_vals, color in sorted_series:
+            actual_y = y_vals[-1]
+            
+            # 2. Tính toán vị trí Y cho nhãn text để không bị đè
+            if use_log_y:
+                # Nếu dùng log scale, khoảng cách an toàn là nhân hệ số
+                text_y = max(actual_y, last_text_y * 1.5)
+            else:
+                # Nếu dùng linear scale, khoảng cách an toàn là cộng thêm một lượng
+                y_range = ax.get_ylim()[1] - ax.get_ylim()[0]
+                text_y = max(actual_y, last_text_y + y_range * 0.05)
+            
+            # Ghi text tại vị trí an toàn đã tính toán
             ax.text(
                 x_text,
-                y_vals[-1],
-                f"{y_vals[-1]:.4f}s",
+                text_y,
+                f"{actual_y:.4f}s",
                 color=color,
                 fontsize=10.5,
                 va="center",
                 fontweight="semibold",
             )
-        ax.set_xlim(left=x_min * 0.95, right=x_max * 1.35)
+            
+            # 3. Vẽ đường chỉ dẫn (Leader line) nối từ điểm thực tế đến nhãn text cho TẤT CẢ các điểm
+            ax.plot(
+                [x_max * 1.05, x_text * 0.95], 
+                [actual_y, text_y], 
+                color=color, linestyle=":", linewidth=1.5, alpha=0.6
+            )
+                
+            last_text_y = text_y
+
+        # Mở rộng trục X đủ lớn để nhãn text và đường nối không bị tràn viền
+        ax.set_xlim(left=x_min * 0.95, right=x_max * 3.0)
 
     ax.legend(
         loc="upper left",

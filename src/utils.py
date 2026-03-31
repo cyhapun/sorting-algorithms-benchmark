@@ -242,11 +242,11 @@ def plot_comprehensive_barchart_grid(
     """
     plt.style.use("seaborn-v0_8-whitegrid")
    
-    # Tạo Figure lớn chứa 4 subplots (lưới 2x2)
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(18, 12), dpi=140)
+    # TỐI ƯU HÓA: Kích thước A4 ngang, độ phân giải in ấn (dpi=300)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 10), dpi=300)
     fig.patch.set_facecolor("#F7F8FB")
    
-    # Làm phẳng mảng axes để dễ lặp qua (từ 2x2 thành mảng 1 chiều 4 phần tử)
+    # Làm phẳng mảng axes để dễ lặp qua
     axes = axes.flatten()
    
     algorithms = list(all_results.keys())
@@ -264,7 +264,7 @@ def plot_comprehensive_barchart_grid(
         "reverse_sorted": "Sắp ngược",
     }
 
-    # Lặp qua từng loại dữ liệu để vẽ vào từng subplot tương ứng
+    # Lặp qua từng loại dữ liệu
     for ax_idx, target_dataset in enumerate(datasets):
         ax = axes[ax_idx]
         ax.set_facecolor("#F7F8FB")
@@ -279,7 +279,7 @@ def plot_comprehensive_barchart_grid(
                 x + offset,
                 safe_times,
                 width,
-                label=algo_name if ax_idx == 0 else "", # Chỉ dán nhãn ở biểu đồ đầu tiên cho Legend
+                label=algo_name if ax_idx == 0 else "",
                 color=colors[i % len(colors)],
                 edgecolor="white",
                 linewidth=1.0,
@@ -292,35 +292,48 @@ def plot_comprehensive_barchart_grid(
                 if yval > 1e-5:
                     ax.text(
                         bar.get_x() + bar.get_width()/2,
-                        yval * 1.15,
-                        f"{yval:.3f}", # Rút gọn bớt số thập phân để đỡ rối
-                        ha='center', va='bottom', fontsize=8, rotation=90, color="#333333", fontweight="bold"
+                        yval * 1.25, # Nhích text lên một khoảng vừa đủ so với đỉnh cột
+                        f"{yval:.3f}", 
+                        ha='center', 
+                        va='bottom', 
+                        fontsize=8,
+                        rotation=90, 
+                        color="#333333", 
+                        fontweight="bold"
                     )
 
-        # Cấu hình cho từng Subplot
+        # =======================================================
+        # Cấu hình cho từng Subplot (Fix bẹp đồ thị & đè Title)
+        # =======================================================
         ax.set_yscale("log")
-        ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=15, fontweight="bold", color="#2C3E50")
         
+        # GIẢI PHÁP: Chỉ nhân trần trục Y lên 4 lần (chưa tới 1 nấc Log) để giữ độ cao của cột
+        ymin, ymax = ax.get_ylim()
+        ax.set_ylim(bottom=ymin, top=ymax * 4) 
+        
+        # GIẢI PHÁP: Tăng pad=30 để đẩy hẳn tiêu đề lên trên, nhường không gian cho text
+        ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=16, fontweight="bold", color="#2C3E50", pad=30) 
+       
         ax.set_xticks(x)
-        ax.set_xticklabels([f"{s:,}".replace(",", ".") for s in sizes], fontsize=11, fontweight="bold")
-        ax.set_xlabel("Kích thước mảng (n)", fontsize=12)
-        if ax_idx % 2 == 0: # 2 biểu đồ cột trái
-            ax.set_ylabel("Thời gian (s) - Log Scale", fontsize=12)
+        ax.set_xticklabels([f"{s:,}".replace(",", ".") for s in sizes], fontsize=12, fontweight="bold")
+        ax.set_xlabel("Kích thước mảng (n)", fontsize=13)
+        
+        if ax_idx % 2 == 0: 
+            ax.set_ylabel("Thời gian (s) - Log Scale", fontsize=13)
 
-        # Lưới và viền cho từng subplot
         ax.grid(True, which="major", axis="y", linestyle="--", linewidth=0.7, alpha=0.5)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
     # Đặt tiêu đề chung cho cả bức ảnh (Figure)
-    fig.suptitle(title, fontsize=22, fontweight="bold", y=0.98, color="#1A252F")
+    fig.suptitle(title, fontsize=24, fontweight="bold", y=0.98, color="#1A252F")
    
-    # Tạo MỘT Legend chung duy nhất đặt ở dưới cùng
+    # Legend chung đặt ở dưới cùng
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_algos, fontsize=13, frameon=False)
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_algos, fontsize=14, frameon=False)
 
-    # Chỉnh khoảng cách giữa các subplots để không bị đè chữ
-    plt.tight_layout(rect=[0, 0.08, 1, 0.95])
+    # Nới lỏng top margin xuống 0.88 để Suptitle không đè vào các Subtitle
+    plt.tight_layout(rect=[0, 0.08, 1, 0.88])
     plt.show()
 
 def plot_danger_zone_heatmap(all_results, target_size_idx, sizes, datasets, title="Bản đồ Nhiệt: Vùng Nguy Hiểm Tại n = "):
@@ -375,7 +388,7 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
     """
     plt.style.use("seaborn-v0_8-whitegrid")
     
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(16, 12), dpi=140)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(16, 12), dpi=300)
     fig.patch.set_facecolor("#FFFFFF")
     axes = axes.flatten()
     
@@ -470,7 +483,7 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
         if ax_idx % 2 == 0:
             ax.set_ylabel("Hệ số tăng tốc (Lần chạy) - Thang Log", fontsize=12)
 
-    fig.suptitle(f"{title} ({baseline_algo_name})", fontsize=22, fontweight="heavy", y=0.96, color="#1A252F")
+    fig.suptitle(f"{title}", fontsize=22, fontweight="heavy", y=0.96, color="#1A252F")
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_compare, fontsize=13, frameon=False)
 

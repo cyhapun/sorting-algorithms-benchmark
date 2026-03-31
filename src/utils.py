@@ -355,7 +355,7 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
     x = np.arange(len(sizes))  
     width = 0.8 / num_compare 
     
-    # Màu sắc cố định cho các thuật toán (bảngOkabe-Ito, bỏ baseline)
+    # Màu sắc cố định cho các thuật toán (bảng Okabe-Ito, bỏ baseline)
     algo_colors = ["#E69F00", "#009E73", "#0072B2", "#CC79A7"] 
     labels_vn = {
         "random": "Ngẫu nhiên",
@@ -390,19 +390,35 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
                 edgecolor="white", linewidth=1.2, zorder=3, alpha=0.9
             )
             
-            # Ghi nhãn Speedup Factor trên từng cột (dạng rút gọn 10^x hoặc số thực)
+            # Ghi nhãn Speedup Factor trên từng cột (LOẠI BỎ CHỮ 'E')
             for bar in bars:
                 yval = bar.get_height()
                 if yval > 2: # Chỉ ghi số nếu nhanh hơn ít nhất 2 lần
+                    # Nếu >= 1000 thì hiển thị kiểu 10.000x, ngược lại hiển thị kiểu 15.5x
+                    if yval >= 1000:
+                        label_text = f"{int(yval):,}x".replace(",", ".")
+                    else:
+                        label_text = f"{yval:.1f}x"
+                        
                     ax.text(
                         bar.get_x() + bar.get_width()/2, yval * 1.15, 
-                        f"{yval:.1e}" if yval >= 1000 else f"{yval:.1f}x", 
+                        label_text, 
                         ha='center', va='bottom', fontsize=9, rotation=90, color="#2C3E50", fontweight="bold"
                     )
 
         # Trục Y Logarithmic Factor
         ax.set_yscale("log")
-        ax.yaxis.set_major_formatter(LogFormatterMathtext())
+        
+        # Format lại toàn bộ trục Y để loại bỏ chữ 'e' (chuyển 1e4 thành 10.000x)
+        def y_axis_formatter(y, _):
+            if y >= 1000:
+                return f"{int(y):,}x".replace(",", ".")
+            elif y >= 1:
+                return f"{int(y)}x"
+            else:
+                return f"{y:g}x"
+                
+        ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
         
         # Tiêu đề subplot
         ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=15, fontweight="bold", pad=15)

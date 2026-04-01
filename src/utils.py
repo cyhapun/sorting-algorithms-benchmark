@@ -5,6 +5,8 @@ import time
 from matplotlib.ticker import FuncFormatter, LogFormatterMathtext, NullFormatter
 from matplotlib.colors import LogNorm
 import statistics
+import os
+import json
 
 plt.rcParams["font.family"] = "Times New Roman"
 
@@ -619,9 +621,6 @@ def plot_baseline_n_log_n(
     plt.tight_layout()
     plt.show()
 
-<<<<<<< HEAD
-import matplotlib.pyplot as plt
-
 def plot_multiple_baselines(sizes, baselines_dict, title="So Sánh Các Đường Cơ Sở"):
     """
     Hàm kết hợp nhiều đường Baseline vào một biểu đồ duy nhất.
@@ -632,16 +631,13 @@ def plot_multiple_baselines(sizes, baselines_dict, title="So Sánh Các Đườn
     
     fig, ax = plt.subplots(figsize=(12, 7), dpi=150)
 
-    # Bảng màu tối giản, chuyên nghiệp
     colors = ['#2E5A88', '#D9534F', '#5CB85C', '#F0AD4E', '#5BC0DE']
     markers = ['o', 's', '^', 'D', 'v']
 
     for i, (label, results) in enumerate(baselines_dict.items()):
         color = colors[i % len(colors)]
-        marker = markers[i % len(markers)]
-        
         ax.plot(sizes, results, 
-                marker=marker, 
+                marker=markers[i % len(markers)], 
                 linestyle='-', 
                 color=color,
                 linewidth=2.5, 
@@ -650,27 +646,32 @@ def plot_multiple_baselines(sizes, baselines_dict, title="So Sánh Các Đườn
                 markeredgewidth=2,
                 label=label)
 
-        # Hiển thị text cho điểm dữ liệu cuối cùng (để tránh rối mắt)
-        ax.text(sizes[-1], results[-1] * 1.2, 
+        # Hiển thị giá trị tại điểm cuối
+        ax.text(sizes[-1], results[-1] * 1.15, 
                 f"{results[-1]:.4f}s", 
                 fontsize=9, fontweight='bold', ha='center', color=color)
+
+    # --- PHẦN CHỈNH SỬA ĐỂ XÓA VIỀN ---
+    for spine in ax.spines.values():
+        spine.set_visible(False)  # Ẩn toàn bộ 4 đường viền (trên, dưới, trái, phải)
+
+    ax.tick_params(axis='both', which='both', length=0) # Ẩn các dấu gạch nhỏ trên trục
+    # ---------------------------------
 
     ax.set_xscale('log')
     ax.set_yscale('log')
 
-    ax.set_title(title, fontsize=16, fontweight='bold', pad=25, color='#222222')
-    ax.set_xlabel('Kích thước tập dữ liệu (n) - Log scale', fontsize=12, fontweight='600', labelpad=12)
-    ax.set_ylabel('Thời gian (s) - Log scale', fontsize=12, fontweight='600', labelpad=12)
+    ax.set_title(title, fontsize=16, fontweight='bold', pad=30, color='#222222')
+    ax.set_xlabel('Kích thước tập dữ liệu (n)', fontsize=11, color='#666666', labelpad=10)
+    ax.set_ylabel('Thời gian thực thi (s)', fontsize=11, color='#666666', labelpad=10)
 
     ax.set_xticks(sizes)
     ax.set_xticklabels([f"{n:,}".replace(',', '.') for n in sizes])
 
-    ax.grid(True, which="both", ls="-", alpha=0.1, color='gray') # Thêm grid nhẹ để dễ nhìn
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    
-    ax.legend(loc='upper left', fontsize=10, frameon=True, shadow=False)
-=======
+    ax.legend(loc='upper left', fontsize=10, frameon=False)
+
+    plt.tight_layout()
+    plt.show()
 
 def calculate_baseline_n2(all_results, sizes, datasets):
     """
@@ -763,13 +764,12 @@ def plot_baseline_n2(
     ax.spines["bottom"].set_linewidth(1.2)
 
     ax.legend(loc="upper left", fontsize=11, frameon=False)
->>>>>>> d0b50052c8ddc247a922eb6f8f23ade033a02827
 
     plt.tight_layout()
     plt.show()
 
 def load_data_from_folder(folder_path):
-    sizes = [100, 1000, 10000, 100000] # Giả định các size của bạn
+    sizes = [100, 1000, 10000, 100000] 
     data = {}
     
     # Duyệt qua tất cả các file trong folder

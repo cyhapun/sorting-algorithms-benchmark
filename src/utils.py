@@ -206,6 +206,8 @@ def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes, num_runs=
             data = data_dict[data_type].get(size)
                 
             if data is not None:
+                # WARM-UP: chạy thử một lần
+                algorithm_func(data.copy())
                 # Mảng lưu thời gian của các lần chạy cho size này
                 run_times = []
                 
@@ -228,7 +230,6 @@ def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes, num_runs=
                 results[data_type].append(None)
                 
     return results
-
 
 def plot_comprehensive_barchart_grid(
     all_results,
@@ -381,7 +382,6 @@ def plot_danger_zone_heatmap(all_results, target_size_idx, sizes, datasets, titl
     plt.tight_layout()
     plt.show()
 
-
 def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name, title="Bảng Tỷ lệ Tăng tốc so với Selection Sort"):
     """
     Vẽ lưới 2x2 Subplots so sánh Speedup Factor so với Baseline tồi nhất (ví dụ Selection Sort).
@@ -488,4 +488,93 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
     fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_compare, fontsize=13, frameon=False)
 
     plt.tight_layout(rect=[0, 0.08, 1, 0.93])
+    plt.show()
+
+def calculate_baseline_n_log_n(all_results, sizes):
+    """
+    Hàm tính toán đường cơ sở (Baseline) cho nhóm thuật toán O(n log n).
+    Inputs:
+    - all_results: Dictionary chứa kết quả chạy của cả Merge Sort và Quick Sort.
+    - sizes: Danh sách các kích thước n (VD: [100, 1000, 10000, 100000]).
+    
+    Output:
+    - Danh sách các giá trị Baseline tương ứng với từng kích thước n.
+    """
+    baselines = []
+    
+    for i in range(len(sizes)):
+        valid_times = [] # Chứa thời gian của các kịch bản chạy đúng O(n log n)
+        
+        # 1. Thu thập dữ liệu của Merge Sort (Ổn định ở cả 4 kịch bản)
+        if "Merge Sort" in all_results:
+            valid_times.append(all_results["Merge Sort"]["random"][i])
+            valid_times.append(all_results["Merge Sort"]["nearly_sorted"][i])
+            valid_times.append(all_results["Merge Sort"]["many_duplicates"][i])
+            valid_times.append(all_results["Merge Sort"]["reverse_sorted"][i])
+        
+        # 2. Thu thập dữ liệu của Quick Sort (Loại bỏ kịch bản suy biến)
+        if "Quick Sort" in all_results:
+            valid_times.append(all_results["Quick Sort"]["random"][i])
+            valid_times.append(all_results["Quick Sort"]["nearly_sorted"][i])
+            valid_times.append(all_results["Quick Sort"]["reverse_sorted"][i])
+            # BỎ QUA cố ý: all_results["Quick Sort"]["many_duplicates"][i] 
+            # vì kịch bản này bị suy biến thành O(n^2), làm hỏng đường đại diện.
+        
+        # Lọc bỏ các giá trị None (nếu có lỗi trong quá trình chạy)
+        valid_times = [t for t in valid_times if t is not None]
+        
+        # 3. Tính trung bình cộng để ra con số "vàng" Baseline
+        if valid_times:
+            baseline_value = sum(valid_times) / len(valid_times)
+            baselines.append(baseline_value)
+        else:
+            baselines.append(None)
+            
+    return baselines
+
+def plot_baseline_n_log_n(sizes, baseline_results, title="Đường Cơ Sở Đại Diện Cho Nhóm O(n log n)"):
+    """
+    Hàm trực quan hóa đường Baseline bằng thang đo Log-Log.
+    """
+    # Cấu hình style đồ thị
+    plt.style.use("seaborn-v0_8-whitegrid")
+    plt.figure(figsize=(10, 6), dpi=150)
+
+    # Vẽ đường biểu diễn
+    plt.plot(sizes, baseline_results, 
+             marker='o',           # Điểm nhấn hình tròn
+             linestyle='-',        # Nét liền
+             color='#1F77B4',      # Màu xanh dương chuyên nghiệp
+             linewidth=2.5,        # Độ dày đường
+             markersize=8,         # Kích thước điểm
+             label='Baseline O(n log n)')
+
+    # BẮT BUỘC: Đặt thang đo Logarit cho cả trục X và Y
+    plt.xscale('log')
+    plt.yscale('log')
+
+    # Ghi chú giá trị thời gian (s) lên từng điểm
+    for i in range(len(sizes)):
+        if baseline_results[i] is not None:
+            plt.text(sizes[i], baseline_results[i] * 1.15, 
+                     f"{baseline_results[i]:.5f}s", 
+                     fontsize=10, 
+                     fontweight='bold',
+                     ha='center', 
+                     color='#333333')
+
+    # Thiết lập tiêu đề và nhãn
+    plt.title(title, fontsize=14, fontweight='bold', pad=20)
+    plt.xlabel('Kích thước tập dữ liệu n (Thang đo Log)', fontsize=12, fontweight='bold')
+    plt.ylabel('Thời gian thực thi (giây) - Thang đo Log', fontsize=12, fontweight='bold')
+
+    # Định dạng trục X (thêm dấu chấm phân cách hàng nghìn)
+    plt.xticks(sizes, [f"{n:,}".replace(',', '.') for n in sizes])
+
+    # Hiển thị lưới và chú thích
+    plt.grid(True, which="both", linestyle="--", alpha=0.6)
+    plt.legend(loc='upper left', fontsize=12, frameon=True)
+
+    # Căn chỉnh bố cục và xuất đồ thị
+    plt.tight_layout()
     plt.show()

@@ -6,6 +6,8 @@ from matplotlib.ticker import FuncFormatter, LogFormatterMathtext, NullFormatter
 from matplotlib.colors import LogNorm
 import statistics
 
+plt.rcParams['font.family'] = 'DejaVu Sans'
+
 def plot_execution_times(
     results_dict,
     sizes,

@@ -39,13 +39,11 @@ def plot_execution_times(
         Nếu True, ghi nhãn trực tiếp tại điểm cuối mỗi đường.
     """
 
-    # Style hiện đại, nền sáng giúp bản PDF nhìn rõ hơn.
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(12, 7), dpi=140)
     fig.patch.set_facecolor("#F7F8FB")
     ax.set_facecolor("#F7F8FB")
 
-    # Bảng màu thân thiện với người mù màu (Okabe-Ito inspired).
     colors = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9"]
     markers = ["o", "s", "D", "^", "P", "X"]
     labels = {
@@ -57,15 +55,13 @@ def plot_execution_times(
 
     plotted_series = []
 
-    # Vẽ đường cho từng loại tập dữ liệu
     for idx, data_type in enumerate(datasets):
         times = results_dict[data_type]
 
-        # Lọc các giá trị None (nếu có lỗi khi đọc file)
         valid_sizes = [sizes[i] for i in range(len(sizes)) if times[i] is not None]
         valid_times = [times[i] for i in range(len(times)) if times[i] is not None]
 
-        if valid_sizes:  # Chỉ vẽ nếu có dữ liệu
+        if valid_sizes:  
             x_vals = np.array(valid_sizes, dtype=float)
             y_vals = np.array(valid_times, dtype=float)
             display_label = labels.get(data_type, data_type)
@@ -83,7 +79,6 @@ def plot_execution_times(
                 zorder=3,
             )
 
-            # Làm nổi bật điểm cuối để đọc nhanh performance tại n lớn nhất.
             ax.scatter(
                 [x_vals[-1]],
                 [y_vals[-1]],
@@ -94,7 +89,6 @@ def plot_execution_times(
 
             plotted_series.append((display_label, x_vals, y_vals, colors[idx % len(colors)]))
 
-    # Dùng trục x log giúp các mốc n=10^2...10^5 tách đều và dễ so sánh.
     ax.set_xscale("log", base=10)
     ax.set_xticks(sizes)
     ax.set_xticklabels([f"{int(s):,}".replace(",", ".") for s in sizes])
@@ -106,34 +100,27 @@ def plot_execution_times(
         if positive_values:
             ax.set_yscale("log")
 
-    # Trang trí chi tiết cho đồ thị
     ax.set_title(
         f"Thời gian thực thi của thuật toán {algo_name}",
         fontsize=18,
         fontweight="bold",
         pad=14,
     )
-    ax.set_xlabel("Kích thước tập dữ liệu n", fontsize=13, labelpad=10)
-    ax.set_ylabel("Thời gian thực thi (giây)", fontsize=13, labelpad=10)
+    ax.set_xlabel("Kích thước tập dữ liệu (n)", fontsize=13, labelpad=10)
+    ax.set_ylabel("Thời gian (s) - Log scale", fontsize=13, labelpad=10)
 
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y:.3f}"))
 
-    # Thêm lưới để dễ dóng các giá trị
     ax.grid(True, which="major", linestyle="--", linewidth=0.8, alpha=0.45)
     ax.grid(True, which="minor", linestyle=":", linewidth=0.6, alpha=0.25)
 
-    # Bỏ viền thừa để biểu đồ sạch hơn.
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
 
-    # ========================================================
-    # Ghi nhãn trực tiếp tại điểm cuối (Tích hợp chống đè nhãn)
-    # ========================================================
     if annotate_last_point:
         x_min, x_max = min(sizes), max(sizes)
-        x_text = x_max * 1.35  # Đẩy text ra xa hơn một chút để có không gian vẽ đường nối
+        x_text = x_max * 1.35  
 
-        # 1. Sắp xếp các điểm cuối theo thứ tự thời gian tăng dần (từ dưới lên trên)
         sorted_series = sorted(plotted_series, key=lambda s: s[2][-1])
         
         last_text_y = 1e-10 
@@ -141,16 +128,12 @@ def plot_execution_times(
         for display_label, x_vals, y_vals, color in sorted_series:
             actual_y = y_vals[-1]
             
-            # 2. Tính toán vị trí Y cho nhãn text để không bị đè
             if use_log_y:
-                # Nếu dùng log scale, khoảng cách an toàn là nhân hệ số
                 text_y = max(actual_y, last_text_y * 1.5)
             else:
-                # Nếu dùng linear scale, khoảng cách an toàn là cộng thêm một lượng
                 y_range = ax.get_ylim()[1] - ax.get_ylim()[0]
                 text_y = max(actual_y, last_text_y + y_range * 0.05)
             
-            # Ghi text tại vị trí an toàn đã tính toán
             ax.text(
                 x_text,
                 text_y,
@@ -161,7 +144,6 @@ def plot_execution_times(
                 fontweight="semibold",
             )
             
-            # 3. Vẽ đường chỉ dẫn (Leader line) nối từ điểm thực tế đến nhãn text cho TẤT CẢ các điểm
             ax.plot(
                 [x_max * 1.05, x_text * 0.95], 
                 [actual_y, text_y], 
@@ -170,7 +152,6 @@ def plot_execution_times(
                 
             last_text_y = text_y
 
-        # Mở rộng trục X đủ lớn để nhãn text và đường nối không bị tràn viền
         ax.set_xlim(left=x_min * 0.95, right=x_max * 3.0)
 
     ax.legend(
@@ -182,7 +163,6 @@ def plot_execution_times(
         framealpha=0.95,
     )
 
-    # Hiển thị đồ thị
     plt.tight_layout(pad=2.0)
     plt.show()
 
@@ -204,28 +184,21 @@ def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes, num_runs=
     
     for data_type in datasets:
         for size in sizes:
-            # Lấy mảng dữ liệu gốc từ RAM
             data = data_dict[data_type].get(size)
                 
             if data is not None:
-                # WARM-UP: chạy thử một lần
                 algorithm_func(data.copy())
-                # Mảng lưu thời gian của các lần chạy cho size này
                 run_times = []
                 
                 for _ in range(num_runs):
-                    # BẮT BUỘC: Phải copy lại mảng gốc cho mỗi lần chạy
-                    # Nếu không, từ lần chạy thứ 2 thuật toán sẽ sort trên mảng đã sort sẵn
                     arr_to_sort = data.copy()
                     
-                    # Bắt đầu đo
                     start_time = time.perf_counter()
                     algorithm_func(arr_to_sort)
                     end_time = time.perf_counter()
                     
                     run_times.append(end_time - start_time)
                 
-                # Tính trung bình cộng của num_runs lần chạy
                 median_time = statistics.median(run_times)
                 results[data_type].append(median_time)
             else:
@@ -244,12 +217,10 @@ def plot_comprehensive_barchart_grid(
     Mỗi subplot là một Bar Chart so sánh các thuật toán theo Size trên 1 loại dataset.
     """
     plt.style.use("seaborn-v0_8-whitegrid")
-   
-    # TỐI ƯU HÓA: Kích thước A4 ngang, độ phân giải in ấn (dpi=300)
+
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 10), dpi=300)
     fig.patch.set_facecolor("#F7F8FB")
-   
-    # Làm phẳng mảng axes để dễ lặp qua
+
     axes = axes.flatten()
    
     algorithms = list(all_results.keys())
@@ -267,7 +238,6 @@ def plot_comprehensive_barchart_grid(
         "reverse_sorted": "Sắp ngược",
     }
 
-    # Lặp qua từng loại dữ liệu
     for ax_idx, target_dataset in enumerate(datasets):
         ax = axes[ax_idx]
         ax.set_facecolor("#F7F8FB")
@@ -289,13 +259,12 @@ def plot_comprehensive_barchart_grid(
                 zorder=3
             )
            
-            # Ghi nhãn thời gian trên từng cột nhỏ
             for bar in bars:
                 yval = bar.get_height()
                 if yval > 1e-5:
                     ax.text(
                         bar.get_x() + bar.get_width()/2,
-                        yval * 1.25, # Nhích text lên một khoảng vừa đủ so với đỉnh cột
+                        yval * 1.25, 
                         f"{yval:.3f}", 
                         ha='center', 
                         va='bottom', 
@@ -305,37 +274,29 @@ def plot_comprehensive_barchart_grid(
                         fontweight="bold"
                     )
 
-        # =======================================================
-        # Cấu hình cho từng Subplot (Fix bẹp đồ thị & đè Title)
-        # =======================================================
         ax.set_yscale("log")
         
-        # GIẢI PHÁP: Chỉ nhân trần trục Y lên 4 lần (chưa tới 1 nấc Log) để giữ độ cao của cột
         ymin, ymax = ax.get_ylim()
         ax.set_ylim(bottom=ymin, top=ymax * 4) 
-        
-        # GIẢI PHÁP: Tăng pad=30 để đẩy hẳn tiêu đề lên trên, nhường không gian cho text
+
         ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=16, fontweight="bold", color="#2C3E50", pad=30) 
        
         ax.set_xticks(x)
         ax.set_xticklabels([f"{s:,}".replace(",", ".") for s in sizes], fontsize=12, fontweight="bold")
-        ax.set_xlabel("Kích thước mảng (n)", fontsize=13)
+        ax.set_xlabel("Kích thước tập dữ liệu (n)", fontsize=13)
         
         if ax_idx % 2 == 0: 
-            ax.set_ylabel("Thời gian (s) - Log Scale", fontsize=13)
+            ax.set_ylabel("Thời gian (s) - Log scale", fontsize=13)
 
         ax.grid(True, which="major", axis="y", linestyle="--", linewidth=0.7, alpha=0.5)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-    # Đặt tiêu đề chung cho cả bức ảnh (Figure)
     fig.suptitle(title, fontsize=24, fontweight="bold", y=0.98, color="#1A252F")
    
-    # Legend chung đặt ở dưới cùng
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.02), ncol=num_algos, fontsize=14, frameon=False)
 
-    # Nới lỏng top margin xuống 0.88 để Suptitle không đè vào các Subtitle
     plt.tight_layout(rect=[0, 0.08, 1, 0.88])
     plt.show()
 
@@ -354,7 +315,6 @@ def plot_danger_zone_heatmap(all_results, target_size_idx, sizes, datasets, titl
     }
     y_labels = [labels_vn.get(ds, ds) for ds in datasets]
     
-    # Xây dựng ma trận dữ liệu (Rows: Datasets, Cols: Algorithms)
     data_matrix = np.zeros((len(datasets), len(algorithms)))
     
     for i, ds in enumerate(datasets):
@@ -364,18 +324,17 @@ def plot_danger_zone_heatmap(all_results, target_size_idx, sizes, datasets, titl
 
     plt.figure(figsize=(10, 6), dpi=140)
     
-    # Sử dụng LogNorm để thang màu không bị thuật toán O(n^2) nuốt chửng
     sns.heatmap(
         data_matrix, 
         annot=True, 
         fmt=".4f", 
-        cmap="YlOrRd", # Bảng màu Vàng -> Đỏ (Đỏ là nguy hiểm/chậm)
+        cmap="YlOrRd",
         norm=LogNorm(vmin=data_matrix.min(), vmax=data_matrix.max()),
         xticklabels=algorithms, 
         yticklabels=y_labels,
         linewidths=1.5,
         linecolor='white',
-        cbar_kws={'label': 'Thời gian (giây) - Log Scale'}
+        cbar_kws={'label': 'Thời gian (giây) - Log scale'}
     )
     
     plt.title(f"{title} {target_n:,}".replace(",", "."), fontsize=16, fontweight="bold", pad=20)
@@ -395,14 +354,12 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
     axes = axes.flatten()
     
     algorithms = list(all_results.keys())
-    # Loại bỏ baseline ra khỏi danh sách so sánh (vì cột của nó luôn = 1)
     algos_to_compare = [a for a in algorithms if a != baseline_algo_name]
     
     num_compare = len(algos_to_compare)
     x = np.arange(len(sizes))  
     width = 0.8 / num_compare 
     
-    # Màu sắc cố định cho các thuật toán (bảng Okabe-Ito, bỏ baseline)
     algo_colors = ["#E69F00", "#009E73", "#0072B2", "#CC79A7"] 
     labels_vn = {
         "random": "Ngẫu nhiên",
@@ -411,13 +368,11 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
         "reverse_sorted": "Sắp ngược",
     }
 
-    # Lặp qua từng loại dữ liệu
     for ax_idx, target_dataset in enumerate(datasets):
         ax = axes[ax_idx]
         ax.set_facecolor("#FFFFFF")
         dataset_name = labels_vn.get(target_dataset, target_dataset)
 
-        # Lấy mảng thời gian baseline để tính toán
         baseline_times = all_results[baseline_algo_name][target_dataset]
         baseline_times = [t if (t is not None and t > 0) else 1e-7 for t in baseline_times]
 
@@ -453,10 +408,8 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
                         ha='center', va='bottom', fontsize=9, rotation=90, color="#2C3E50", fontweight="bold"
                     )
 
-        # Trục Y Logarithmic Factor
         ax.set_yscale("log")
         
-        # Format lại toàn bộ trục Y để loại bỏ chữ 'e' (chuyển 1e4 thành 10.000x)
         def y_axis_formatter(y, _):
             if y >= 1000:
                 return f"{int(y):,}x".replace(",", ".")
@@ -467,23 +420,20 @@ def plot_algorithm_speedup_grid(all_results, sizes, datasets, baseline_algo_name
                 
         ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
         
-        # Tiêu đề subplot
         ax.set_title(f"Tập dữ liệu: {dataset_name}", fontsize=15, fontweight="bold", pad=15)
         ax.grid(True, which="major", axis="y", linestyle="-", linewidth=0.8, color="#EAEAEA")
-        
-        # Vẽ đường Baseline = 1
+
         ax.axhline(1, color="#BDC3C7", linestyle="--", linewidth=1.5, zorder=2)
         
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-        # Cấu hình Full trục X cho cả 4 biểu đồ
         ax.set_xticks(x)
         ax.set_xticklabels([f"{s:,}".replace(",", ".") for s in sizes], fontsize=11, fontweight="bold")
-        ax.set_xlabel("Kích thước mảng (n)", fontsize=12)
+        ax.set_xlabel("Kích thước tập dữ liệu (n)", fontsize=12)
             
         if ax_idx % 2 == 0:
-            ax.set_ylabel("Hệ số tăng tốc (Lần chạy) - Thang Log", fontsize=12)
+            ax.set_ylabel("Hệ số tăng tốc - Log scale", fontsize=12)
 
     fig.suptitle(f"{title}", fontsize=22, fontweight="heavy", y=0.96, color="#1A252F")
     handles, labels = axes[0].get_legend_handles_labels()
@@ -505,27 +455,21 @@ def calculate_baseline_n_log_n(all_results, sizes):
     baselines = []
     
     for i in range(len(sizes)):
-        valid_times = [] # Chứa thời gian của các kịch bản chạy đúng O(n log n)
-        
-        # 1. Thu thập dữ liệu của Merge Sort (Ổn định ở cả 4 kịch bản)
+        valid_times = [] 
+
         if "Merge Sort" in all_results:
             valid_times.append(all_results["Merge Sort"]["random"][i])
             valid_times.append(all_results["Merge Sort"]["nearly_sorted"][i])
             valid_times.append(all_results["Merge Sort"]["many_duplicates"][i])
             valid_times.append(all_results["Merge Sort"]["reverse_sorted"][i])
-        
-        # 2. Thu thập dữ liệu của Quick Sort (Loại bỏ kịch bản suy biến)
+
         if "Quick Sort" in all_results:
             valid_times.append(all_results["Quick Sort"]["random"][i])
             valid_times.append(all_results["Quick Sort"]["nearly_sorted"][i])
             valid_times.append(all_results["Quick Sort"]["reverse_sorted"][i])
-            # BỎ QUA cố ý: all_results["Quick Sort"]["many_duplicates"][i] 
-            # vì kịch bản này bị suy biến thành O(n^2), làm hỏng đường đại diện.
         
-        # Lọc bỏ các giá trị None (nếu có lỗi trong quá trình chạy)
         valid_times = [t for t in valid_times if t is not None]
         
-        # 3. Tính trung bình cộng để ra con số "vàng" Baseline
         if valid_times:
             baseline_value = sum(valid_times) / len(valid_times)
             baselines.append(baseline_value)
@@ -536,47 +480,52 @@ def calculate_baseline_n_log_n(all_results, sizes):
 
 def plot_baseline_n_log_n(sizes, baseline_results, title="Đường Cơ Sở Đại Diện Cho Nhóm O(n log n)"):
     """
-    Hàm trực quan hóa đường Baseline bằng thang đo Log-Log.
+    Hàm trực quan hóa đường Baseline phong cách tối giản (Minimalist).
     """
-    # Cấu hình style đồ thị
-    plt.style.use("seaborn-v0_8-whitegrid")
-    plt.figure(figsize=(10, 6), dpi=150)
+    plt.rcParams['figure.facecolor'] = 'white'
+    plt.rcParams['axes.facecolor'] = 'white'
+    
+    fig, ax = plt.subplots(figsize=(10, 6), dpi=150)
 
-    # Vẽ đường biểu diễn
-    plt.plot(sizes, baseline_results, 
-             marker='o',           # Điểm nhấn hình tròn
-             linestyle='-',        # Nét liền
-             color='#1F77B4',      # Màu xanh dương chuyên nghiệp
-             linewidth=2.5,        # Độ dày đường
-             markersize=8,         # Kích thước điểm
-             label='Baseline O(n log n)')
+    ax.plot(sizes, baseline_results, 
+            marker='o',           
+            linestyle='-',        
+            color='#2E5A88',
+            linewidth=3,          
+            markersize=10,         
+            markerfacecolor='white',
+            markeredgewidth=2.5,
+            label=r'Baseline $O(n \log n)$')
 
-    # BẮT BUỘC: Đặt thang đo Logarit cho cả trục X và Y
-    plt.xscale('log')
-    plt.yscale('log')
+    ax.set_xscale('log')
+    ax.set_yscale('log')
 
-    # Ghi chú giá trị thời gian (s) lên từng điểm
     for i in range(len(sizes)):
         if baseline_results[i] is not None:
-            plt.text(sizes[i], baseline_results[i] * 1.15, 
-                     f"{baseline_results[i]:.5f}s", 
-                     fontsize=10, 
-                     fontweight='bold',
-                     ha='center', 
-                     color='#333333')
+            ax.text(sizes[i], baseline_results[i] * 1.3, 
+                    f"{baseline_results[i]:.5f}s", 
+                    fontsize=10, 
+                    fontweight='bold',
+                    ha='center', 
+                    color='#333333')
 
-    # Thiết lập tiêu đề và nhãn
-    plt.title(title, fontsize=14, fontweight='bold', pad=20)
-    plt.xlabel('Kích thước tập dữ liệu n (Thang đo Log)', fontsize=12, fontweight='bold')
-    plt.ylabel('Thời gian thực thi (giây) - Thang đo Log', fontsize=12, fontweight='bold')
+    ax.set_title(title, fontsize=16, fontweight='bold', pad=25, color='#222222')
+    ax.set_xlabel('Kích thước tập dữ liệu (n) - Log scale', fontsize=12, fontweight='600', labelpad=12)
+    ax.set_ylabel('Thời gian (s) - Log scale', fontsize=12, fontweight='600', labelpad=12)
 
-    # Định dạng trục X (thêm dấu chấm phân cách hàng nghìn)
-    plt.xticks(sizes, [f"{n:,}".replace(',', '.') for n in sizes])
+    ax.set_xticks(sizes)
+    ax.set_xticklabels([f"{n:,}".replace(',', '.') for n in sizes])
 
-    # Hiển thị lưới và chú thích
-    plt.grid(True, which="both", linestyle="--", alpha=0.6)
-    plt.legend(loc='upper left', fontsize=12, frameon=True)
+    ax.grid(False)
 
-    # Căn chỉnh bố cục và xuất đồ thị
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    # Làm đậm đường biên trục X và Y
+    ax.spines['left'].set_linewidth(1.2)
+    ax.spines['bottom'].set_linewidth(1.2)
+
+    ax.legend(loc='upper left', fontsize=11, frameon=False)
+
     plt.tight_layout()
     plt.show()

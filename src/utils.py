@@ -4,7 +4,7 @@ import numpy as np
 import time
 from matplotlib.ticker import FuncFormatter, LogFormatterMathtext, NullFormatter
 from matplotlib.colors import LogNorm
-
+import statistics
 
 def plot_execution_times(
     results_dict,
@@ -204,7 +204,7 @@ def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes, num_runs=
         for size in sizes:
             # Lấy mảng dữ liệu gốc từ RAM
             data = data_dict[data_type].get(size)
-            
+                
             if data is not None:
                 # Mảng lưu thời gian của các lần chạy cho size này
                 run_times = []
@@ -222,8 +222,8 @@ def measure_algorithm_time(algorithm_func, data_dict, datasets, sizes, num_runs=
                     run_times.append(end_time - start_time)
                 
                 # Tính trung bình cộng của num_runs lần chạy
-                average_time = sum(run_times) / num_runs
-                results[data_type].append(average_time)
+                median_time = statistics.median(run_times)
+                results[data_type].append(median_time)
             else:
                 results[data_type].append(None)
                 
